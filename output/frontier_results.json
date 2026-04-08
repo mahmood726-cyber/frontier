@@ -1,0 +1,60 @@
+{
+    "model": "Frontier-CML-WoW-v1.0",
+    "conformalized_estimates": [
+        {
+            "location": "USA",
+            "estimate": 0.85,
+            "conformal_low": 0.8357,
+            "conformal_high": 0.8643,
+            "coverage_guarantee": 0.9
+        },
+        {
+            "location": "IND",
+            "estimate": 0.78,
+            "conformal_low": 0.7633,
+            "conformal_high": 0.7967,
+            "coverage_guarantee": 0.9
+        },
+        {
+            "location": "CHN",
+            "estimate": 0.82,
+            "conformal_low": 0.8046,
+            "conformal_high": 0.8354,
+            "coverage_guarantee": 0.9
+        },
+        {
+            "location": "NGA",
+            "estimate": 0.75,
+            "conformal_low": 0.73,
+            "conformal_high": 0.77,
+            "coverage_guarantee": 0.9
+        }
+    ],
+    "population_alignment": [
+        {
+            "location": "USA",
+            "wasserstein_dist": 2.9467
+        },
+        {
+            "location": "IND",
+            "wasserstein_dist": 7.7454
+        },
+        {
+            "location": "CHN",
+            "wasserstein_dist": 2.1836
+        },
+        {
+            "location": "NGA",
+            "wasserstein_dist": 9.8078
+        }
+    ],
+    "global_bayesian_posterior": {
+        "posterior_mean": 0.808,
+        "hdi_5": 0.78,
+        "hdi_95": 0.836
+    },
+    "truthcert": {
+        "input_hash": "8888de70f795c5c50978a990b9cc622b707040f1d064510d465c32e39cb566de",
+        "timestamp": "2026-04-08"
+    }
+}
