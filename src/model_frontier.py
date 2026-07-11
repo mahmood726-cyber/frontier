@@ -1,11 +1,16 @@
 import json
 import os
 import hashlib
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.stats import wasserstein_distance
+from scipy.special import erf
 import pymc as pm
 import arviz as az
+
+# Resolve data/output relative to the repo root so the pipeline runs from any cwd.
+ROOT = Path(__file__).resolve().parents[1]
 
 def generate_truthcert_hash(data):
     """
@@ -15,32 +20,59 @@ def generate_truthcert_hash(data):
 
 def calculate_wow_distance(p1, p2):
     """
-    Simplified Wasserstein distance between two populations (e.g., age distribution).
+    Wasserstein-1 distance between two populations' age distributions,
+    modelled as normals N(age_mean, age_std).
+
+    Computed in closed form (deterministic, Monte-Carlo-noise-free) instead of
+    sampling. For two 1D normals the W1 distance equals
+        W1 = E_Z | a + b*Z |,  Z ~ N(0,1),  a = m1 - m2,  b = s1 - s2,
+    i.e. the mean of a folded normal with mean a and scale |b|:
+        W1 = sigma*sqrt(2/pi)*exp(-mu^2/(2 sigma^2)) + mu*erf(mu/(sigma*sqrt(2))),
+    with mu = a, sigma = |b| (and W1 = |a| when sigma == 0).
+    This matches scipy.stats.wasserstein_distance on large samples to ~1e-2
+    while being exactly reproducible.
     """
-    # Simulate age distribution samples
-    s1 = np.random.normal(p1['age_mean'], p1['age_std'], 1000)
-    s2 = np.random.normal(p2['age_mean'], p2['age_std'], 1000)
-    return wasserstein_distance(s1, s2)
+    mu = float(p1['age_mean']) - float(p2['age_mean'])
+    sigma = abs(float(p1['age_std']) - float(p2['age_std']))
+    if sigma == 0.0:
+        return abs(mu)
+    return (
+        sigma * np.sqrt(2.0 / np.pi) * np.exp(-mu ** 2 / (2.0 * sigma ** 2))
+        + mu * erf(mu / (sigma * np.sqrt(2.0)))
+    )
 
 def run_conformal_meta_learning(anchors, obs, alpha=0.1):
     """
     Conformalized Meta-Learning (CML) - Liu et al. (2026).
     Provides distribution-free prediction sets for treatment effects.
     """
+    # 0. Validate inputs: empty anchors make np.mean([]) NaN and np.quantile([])
+    #    raise IndexError, so fail closed with a clear message instead.
+    if len(anchors) < 1:
+        raise ValueError("run_conformal_meta_learning requires at least one anchor")
+
     # 1. Fit a meta-learner on clean anchors (weighted by label quality)
-    clean_hr = np.array([a['hr'] for a in anchors])
-    
+    clean_hr = np.array([a['hr'] for a in anchors], dtype=float)
+
     # 2. Calculate non-conformity scores (residuals) on the anchor set
     scores = np.abs(clean_hr - np.mean(clean_hr))
-    
+
     # 3. Compute (1-alpha) quantile of scores
     q = np.quantile(scores, 1 - alpha)
-    
+
     # 4. Generate conformal prediction sets for noisy observational data
     results = []
     for o in obs:
-        # Reweight score by label quality (simulated meta-learning reweighting)
-        adj_q = q / o['label_quality']
+        # Reweight score by label quality (simulated meta-learning reweighting).
+        # Guard against a 0/missing label_quality, which would silently divide
+        # to +/-inf and emit meaningless infinite bounds.
+        label_quality = o.get('label_quality')
+        if label_quality is None or float(label_quality) <= 0.0:
+            raise ValueError(
+                f"label_quality must be > 0 for location "
+                f"{o.get('location', '?')}, got {label_quality!r}"
+            )
+        adj_q = q / float(label_quality)
         results.append({
             "location": o['location'],
             "estimate": round(float(o['hr_obs']), 4),
@@ -76,7 +108,7 @@ def run_svgd_inference(anchors, obs):
     }
 
 def main():
-    input_path = "frontier/data/frontier_synthesis_input.json"
+    input_path = str(ROOT / "data" / "frontier_synthesis_input.json")
     if not os.path.exists(input_path):
         print(f"Input file not found: {input_path}")
         return
@@ -114,7 +146,7 @@ def main():
         }
     }
     
-    output_path = "frontier/output/frontier_results.json"
+    output_path = str(ROOT / "output" / "frontier_results.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w') as f:
         json.dump(output, f, indent=4)

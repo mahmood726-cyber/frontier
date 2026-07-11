@@ -1,7 +1,12 @@
 import json
 import os
+from pathlib import Path
 import pandas as pd
 import numpy as np
+
+# Resolve output relative to the repo root so ingestion runs from any cwd
+# and writes to the existing data/ dir (not a spurious nested frontier/data/).
+ROOT = Path(__file__).resolve().parents[1]
 
 def fetch_frontier_rct_anchors():
     """
@@ -42,7 +47,7 @@ def main():
         "context_wb": fetch_world_bank_context()
     }
     
-    output_path = "frontier/data/frontier_synthesis_input.json"
+    output_path = str(ROOT / "data" / "frontier_synthesis_input.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w') as f:
         json.dump(data, f, indent=4)

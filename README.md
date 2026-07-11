@@ -19,5 +19,27 @@ This repository implements the most advanced "journal-grade" (2025/2026) statist
 - `tests/`: Automated test suite for statistical consistency and coverage.
 - `docs/`: E156 micro-paper and methodology documentation.
 
+## Install
+Pinned dependencies are in `requirements.txt`:
+
+```
+pip install -r requirements.txt
+```
+
+The SVGD step (`run_svgd_inference`) uses PyMC/PyTensor, which compiles the
+model and therefore requires a working C/C++ toolchain (e.g.
+`conda install gxx` / `m2w64-toolchain`). The CML and WoW steps have no such
+requirement.
+
+## Run
+From the repository root:
+
+```
+python src/ingest_data.py      # writes data/frontier_synthesis_input.json
+python src/model_frontier.py   # writes output/frontier_results.json
+```
+
 ## Deployment
-Interactive dashboard hosted at `mahmood726-cyber.github.io/frontier/`.
+An interactive GitHub Pages dashboard is planned but not yet deployed; the
+`docs/` directory currently ships the E156 micro-paper
+(`docs/e156_micro_paper.txt`) only.
